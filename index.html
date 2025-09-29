@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en"> <!-- Dark class is now managed by JS -->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unified Multimodal RAG System</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <script src="https://unpkg.com/lucide-react@latest/dist/lucide-react.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+    <style>
+        /* * PRO UI DESIGN SYSTEM: APPLE-INSPIRED AESTHETICS 
+         */
+        :root {
+            --bg-light: #f9fafb; /* gray-50 */
+            --bg-dark: #030712;  /* gray-950 */
+            --card-bg-light: rgba(255, 255, 255, 0.6);
+            --card-bg-dark: rgba(17, 24, 39, 0.5); /* gray-900 */
+            --border-light: rgba(229, 231, 235, 0.8); /* gray-200 */
+            --border-dark: rgba(55, 65, 81, 0.4); /* gray-700 */
+            --text-primary-light: #111827; /* gray-900 */
+            --text-primary-dark: #f9fafb; /* gray-50 */
+            --text-secondary-light: #4b5563; /* gray-600 */
+            --text-secondary-dark: #9ca3af; /* gray-400 */
+            --shadow-color: 220 3% 15%;
+            --shadow-strength: 2%;
+            --card-shadow: 0 3.5px 5.1px hsl(var(--shadow-color) / calc(var(--shadow-strength) + 3%)),
+                           0 8.3px 12.2px -0.8px hsl(var(--shadow-color) / calc(var(--shadow-strength) + 5%)),
+                           0 18.2px 26.6px -1.7px hsl(var(--shadow-color) / calc(var(--shadow-strength) + 8%));
+        }
+
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.5s ease, color 0.5s ease;
+        }
+        
+        /* Light Mode */
+        body {
+            background-color: var(--bg-light);
+            color: var(--text-primary-light);
+            background-image: radial-gradient(var(--text-secondary-light) 0.5px, transparent 0.5px);
+            background-size: 30px 30px;
+        }
+
+        /* Dark Mode */
+        html.dark body {
+            background-color: var(--bg-dark);
+            color: var(--text-primary-dark);
+            background-image: radial-gradient(var(--text-secondary-dark) 0.5px, transparent 0.5px);
+            --shadow-color: 220 40% 2%;
+            --shadow-strength: 10%;
+        }
+
+        /* Frosted Glass Card Style */
+        .pro-card {
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-radius: 1rem;
+            box-shadow: var(--card-shadow);
+            transition: background-color 0.5s ease, border-color 0.5s ease;
+        }
+        
+        .pro-card-light {
+             background-color: var(--card-bg-light);
+             border: 1px solid var(--border-light);
+        }
+
+        html.dark .pro-card {
+             background-color: var(--card-bg-dark);
+             border: 1px solid var(--border-dark);
+        }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #9ca3af; border-radius: 4px; border: 2px solid transparent; background-clip: content-box;}
+        html.dark ::webkit-scrollbar-thumb { background: #4b5563; }
+
+        .loader { border-width: 3px; border-color: var(--border-dark); border-top-color: #3b82f6; width: 20px; height: 20px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Animated Sources Container */
+        .sources-container {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out;
+        }
+        .sources-container-visible {
+            max-height: 16rem; /* 256px */
+        }
+    </style>
+</head>
+<body>
+    <div id="app" class="p-4 lg:p-8 max-w-screen-2xl mx-auto">
+        
+        <header class="flex items-center justify-between pb-6 border-b border-gray-200 dark:border-gray-800 mb-8">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-black dark:bg-white rounded-xl flex items-center justify-center shadow-lg"><div id="brain-circuit-icon"></div></div>
+                <div>
+                    <h1 class="text-3xl font-extrabold text-gray-900 dark:text-white">Multimodal RAG System</h1>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Offline semantic retrieval with live performance evaluation.</p>
+                </div>
+            </div>
+             <div class="flex items-center gap-2">
+                 <button id="clear-chat-btn" class="flex items-center gap-2 text-sm px-4 py-2 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                    <div id="trash-icon"></div> Clear History
+                </button>
+                <button id="theme-toggle" class="w-10 h-10 rounded-lg flex items-center justify-center text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                    <div id="theme-icon-container"></div>
+                </button>
+             </div>
+        </header>
+
+        <main class="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+            
+            <aside class="lg:col-span-1 xl:col-span-1 flex flex-col gap-8">
+                <div class="pro-card pro-card-light p-6">
+                    <h2 class="text-lg font-bold flex items-center gap-3 mb-4"><div id="file-up-icon"></div>1. Ingest Data</h2>
+                    <form id="process-form" class="space-y-4">
+                         <div class="space-y-3 text-center p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-dashed border-gray-300 dark:border-gray-700">
+                             <input id="file-upload" name="file" type="file" class="hidden" accept=".doc,.docx,.pdf,.png,.jpg,.jpeg,.mp3,.wav"/>
+                            <button type="button" id="file-upload-button" class="w-full justify-center bg-gray-800 dark:bg-white text-white dark:text-black font-semibold text-sm py-2.5 px-4 rounded-lg hover:bg-gray-950 dark:hover:bg-gray-200 transition-colors flex items-center gap-2"><span id="upload-icon"></span>Choose File</button>
+                            <p id="file-name" class="text-xs text-gray-500 dark:text-gray-400 mt-2 truncate">No file selected.</p>
+                        </div>
+                        <div class="flex items-center justify-center gap-6 text-gray-400 dark:text-gray-500 pt-1">
+                           <div id="file-text-icon" title="DOC, PDF"></div><div id="image-icon" title="PNG, JPG"></div><div id="mic-icon" title="MP3, WAV"></div>
+                        </div>
+                         <div>
+                            <label for="embedding-name" class="text-sm font-medium text-gray-600 dark:text-gray-400">New Embedding Set Name</label>
+                            <input type="text" id="embedding-name" name="embeddingName" class="mt-1.5 bg-white/50 dark:bg-black/20 border border-gray-300 dark:border-gray-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 placeholder-gray-400 dark:placeholder-gray-500" placeholder="e.g., project-multimodal-v1">
+                        </div>
+                        <button type="submit" class="w-full bg-blue-600 text-white font-semibold py-2.5 rounded-lg hover:bg-blue-700 transition-transform active:scale-[0.98] flex items-center justify-center gap-2 disabled:bg-gray-500 disabled:cursor-not-allowed">
+                            <span id="process-btn-text">Process & Generate</span><div id="process-loader" class="loader hidden"></div>
+                        </button>
+                    </form>
+                </div>
+
+                 <div class="pro-card pro-card-light p-6">
+                    <h2 class="text-lg font-bold flex items-center gap-3 mb-4"><div id="server-icon"></div>Current Status</h2>
+                    <div id="status-content" class="text-sm space-y-3 font-medium text-gray-600 dark:text-gray-400"><p>Waiting for data ingestion...</p></div>
+                </div>
+
+                 <div class="pro-card pro-card-light p-6">
+                    <h2 class="text-lg font-bold flex items-center gap-3 mb-4"><div id="database-icon"></div>Load Existing Embeddings</h2>
+                    <div class="space-y-4">
+                        <div>
+                             <label for="embedding-select" class="text-sm font-medium text-gray-600 dark:text-gray-400">Choose an embedding set</label>
+                             <select id="embedding-select" class="mt-1.5 bg-white/50 dark:bg-black/20 border border-gray-300 dark:border-gray-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                                 <option>sap-fsm-guide</option><option selected>project-multimodal-v1</option><option>annual-report-2023</option>
+                             </select>
+                        </div>
+                        <button class="w-full bg-gray-200 dark:bg-gray-800 text-gray-800 dark:text-gray-200 font-semibold py-2.5 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors active:scale-[0.98]">Load Selected</button>
+                    </div>
+                </div>
+            </aside>
+            
+            <div class="lg:col-span-2 xl:col-span-3 flex flex-col gap-8">
+                <div class="flex flex-col h-[75vh] pro-card pro-card-light p-0">
+                    <div id="chat-window" class="flex-1 overflow-y-auto p-6 space-y-8">
+                         <div class="flex items-start gap-3 justify-center text-center mt-8">
+                            <div class="flex flex-col items-center">
+                                 <div class="w-16 h-16 bg-gray-100 dark:bg-gray-800/50 rounded-2xl flex items-center justify-center mb-4"><div id="bot-icon"></div></div>
+                                <h2 class="text-2xl font-bold">Multimodal Assistant</h2>
+                                <p class="text-gray-500 dark:text-gray-400 mt-2 max-w-md">Ingest a file and ask a question. The system works offline and provides performance metrics for each query.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="p-4 border-t border-gray-200/80 dark:border-gray-800/60">
+                         <div id="suggested-questions-container" class="mb-3 hidden"></div>
+                        <form id="query-form" class="relative">
+                            <input type="text" id="query-input" class="w-full bg-gray-100 dark:bg-gray-800/50 border border-transparent rounded-lg py-3 pl-4 pr-12 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Ask a follow-up question..." autocomplete="off">
+                            <button type="submit" id="query-submit-btn" class="absolute inset-y-0 right-0 flex items-center justify-center w-12 text-gray-400 hover:text-blue-500 transition-colors disabled:text-gray-600 disabled:cursor-not-allowed"><div id="send-icon"></div></button>
+                        </form>
+                    </div>
+                </div>
+
+                <div id="metrics-dashboard" class="hidden">
+                    <h2 class="text-2xl font-bold mb-4">Last Query Analysis</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+                        <div class="pro-card pro-card-light md:col-span-2 xl:col-span-4 p-6 flex flex-col md:flex-row items-start md:items-center gap-5">
+                             <div>
+                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Overall System Accuracy</p>
+                                <p id="overall-accuracy-score" class="text-5xl font-extrabold text-red-500">0.0%</p>
+                                <p class="text-xs text-gray-400 dark:text-gray-500 mt-1.5">Combines retrieval relevance and response accuracy.</p>
+                             </div>
+                        </div>
+                        <div class="pro-card pro-card-light md:col-span-1 xl:col-span-2 p-6">
+                             <h3 class="font-bold flex items-center gap-2 mb-4"><div id="search-icon"></div>Retrieval Performance</h3>
+                             <div class="grid grid-cols-2 gap-x-4 gap-y-5 text-sm" id="retrieval-metrics-grid"></div>
+                        </div>
+                        <div class="pro-card pro-card-light md:col-span-1 xl:col-span-2 p-6">
+                             <h3 class="font-bold flex items-center gap-2 mb-4"><div id="message-circle-icon"></div>Response Quality</h3>
+                              <div class="grid grid-cols-2 gap-x-4 gap-y-5 text-sm" id="response-metrics-grid"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script type="module">
+        const e = React.createElement;
+        const ui = {}; // UI elements container
+
+        function renderIcon(iconName, props = {}) {
+            try { return e(window.lucide[iconName], props); } catch (error) { console.error(`Icon Error: "${iconName}"`, error); return null; }
+        }
+        
+        const iconMappings = {
+            'brain-circuit-icon': ['BrainCircuit', { size: 28, className: "text-white dark:text-black" }], 'trash-icon': ['Trash2', { size: 16 }],
+            'file-up-icon': ['FileUp', { size: 20, className: 'text-blue-500' }], 'server-icon': ['Server', { size: 20, className: 'text-green-500' }],
+            'database-icon': ['Database', { size: 20, className: 'text-yellow-500' }], 'bot-icon': ['Bot', { size: 36, className: 'text-gray-500 dark:text-gray-400' }],
+            'send-icon': ['Send', { size: 20 }], 'upload-icon': ['UploadCloud', { size: 16 }], 'file-text-icon': ['FileText', { size: 20 }],
+            'image-icon': ['Image', { size: 20 }], 'mic-icon': ['Mic', { size: 20 }], 'search-icon': ['Search', { size: 18 }],
+            'message-circle-icon': ['MessageCircle', { size: 18 }],
+        };
+
+        function initializeUI() {
+            Object.assign(ui, {
+                processForm: document.getElementById('process-form'), processBtnText: document.getElementById('process-btn-text'),
+                processLoader: document.getElementById('process-loader'), statusContent: document.getElementById('status-content'),
+                queryForm: document.getElementById('query-form'), queryInput: document.getElementById('query-input'),
+                querySubmitBtn: document.getElementById('query-submit-btn'), chatWindow: document.getElementById('chat-window'),
+                metricsDashboard: document.getElementById('metrics-dashboard'), clearChatBtn: document.getElementById('clear-chat-btn'),
+                fileUploadInput: document.getElementById('file-upload'), fileUploadButton: document.getElementById('file-upload-button'),
+                fileNameDisplay: document.getElementById('file-name'), suggestedQuestionsContainer: document.getElementById('suggested-questions-container'),
+                themeToggle: document.getElementById('theme-toggle'), themeIconContainer: document.getElementById('theme-icon-container'),
+                retrievalMetricsGrid: document.getElementById('retrieval-metrics-grid'), responseMetricsGrid: document.getElementById('response-metrics-grid'),
+            });
+            for (const [id, [iconName, props]] of Object.entries(iconMappings)) {
+                const container = document.getElementById(id);
+                if (container) ReactDOM.createRoot(container).render(renderIcon(iconName, props));
+            }
+        }
+
+        const SERVER_URL = 'http://localhost:3000';
+
+        function applyTheme(theme) {
+            const isDark = theme === 'dark';
+            document.documentElement.classList.toggle('dark', isDark);
+            const icon = isDark ? renderIcon('Sun', { size: 20, className: 'text-yellow-400' }) : renderIcon('Moon', { size: 20, className: 'text-slate-500' });
+            ReactDOM.createRoot(ui.themeIconContainer).render(icon);
+        }
+
+        function setupEventListeners() {
+            ui.fileUploadButton.addEventListener('click', () => ui.fileUploadInput.click());
+            ui.fileUploadInput.addEventListener('change', () => { ui.fileNameDisplay.textContent = ui.fileUploadInput.files[0]?.name || 'No file selected.'; });
+            ui.processForm.addEventListener('submit', handleProcessForm);
+            ui.queryForm.addEventListener('submit', (e) => { e.preventDefault(); submitQuery(ui.queryInput.value); });
+            ui.clearChatBtn.addEventListener('click', clearChatHistory);
+            ui.themeToggle.addEventListener('click', () => {
+                const newTheme = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
+                localStorage.setItem('theme', newTheme);
+                applyTheme(newTheme);
+            });
+        }
+        
+        async function handleProcessForm(event) {
+            event.preventDefault();
+            if (!ui.fileUploadInput.files[0]) { return appendMessage('system', 'Please select a file to ingest.'); }
+            setProcessingState(true);
+            try {
+                const response = await fetch(`${SERVER_URL}/api/process`, { method: 'POST', body: new FormData(ui.processForm) });
+                const result = await response.json();
+                if (result.status === 'succeeded') {
+                    ui.statusContent.innerHTML = `
+                        <div class="flex justify-between"><span>Status:</span> <span class="font-semibold text-green-500">Ready</span></div>
+                        <div class="flex justify-between"><span>Data Type:</span> <span class="font-semibold text-gray-700 dark:text-gray-200">${result.dataType}</span></div>
+                        <div class="flex justify-between"><span>Embedding Set:</span> <span class="font-semibold text-gray-700 dark:text-gray-200">${result.embeddingSet}</span></div>
+                        <div class="flex justify-between"><span>Chunks:</span> <span class="font-semibold text-gray-700 dark:text-gray-200">${result.chunks}</span></div>`;
+                    appendMessage('system', `Successfully ingested "${ui.fileUploadInput.files[0].name}". You can now ask questions.`);
+                    showSuggestedQuestions(result.dataType);
+                } else { throw new Error(result.message || 'Processing failed.'); }
+            } catch (error) {
+                appendMessage('system', `Error ingesting file: ${error.message}`);
+                ui.statusContent.innerHTML = `<p class="text-red-500">Ingestion failed. Please try again.</p>`;
+            } finally { setProcessingState(false); }
+        }
+        
+        async function submitQuery(query) {
+            const trimmedQuery = query.trim();
+            if (!trimmedQuery) return;
+            appendMessage('user', trimmedQuery);
+            ui.queryInput.value = '';
+            ui.suggestedQuestionsContainer.classList.add('hidden');
+            setQueryLoadingState(true);
+            const botMessageElement = appendMessage('bot', '', true);
+            try {
+                const response = await fetch(`${SERVER_URL}/api/query`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: trimmedQuery }) });
+                if (!response.ok) throw new Error(`Server responded with status: ${response.status}`);
+                const result = await response.json();
+                updateBotMessage(botMessageElement, result.answer, result.sources, result.timestamp);
+                updateMetricsDashboard(result.metrics);
+            } catch (error) {
+                 updateBotMessage(botMessageElement, `Sorry, I encountered an error. ${error.message}`);
+            } finally { setQueryLoadingState(false); }
+        }
+        
+        function clearChatHistory() {
+            ui.chatWindow.innerHTML = `<div class="flex items-start gap-3 justify-center text-center mt-8">
+                <div class="flex flex-col items-center">
+                    <div class="w-16 h-16 bg-gray-100 dark:bg-gray-800/50 rounded-2xl flex items-center justify-center mb-4"><div id="bot-re-render"></div></div>
+                    <h2 class="text-2xl font-bold">Multimodal Assistant</h2>
+                    <p class="text-gray-500 dark:text-gray-400 mt-2 max-w-md">Chat history cleared. Ingest a new file.</p>
+                </div></div>`;
+            ui.metricsDashboard.classList.add('hidden');
+            ui.suggestedQuestionsContainer.classList.add('hidden');
+            ReactDOM.createRoot(document.getElementById('bot-re-render')).render(renderIcon('Bot', { size: 36, className: 'text-gray-500 dark:text-gray-400' }));
+        }
+
+        function showSuggestedQuestions(dataType) {
+            const suggestions = { 'Document': ['Summarize the key points.', 'What is the main conclusion?', 'Who is the author?'], 'Image': ['Describe this image in detail.', 'What objects are in this image?', 'What is the primary color palette?'], 'Audio': ['Transcribe the first 30 seconds.', 'What is the main topic?', 'Identify the speakers.'], 'Unknown': ['What is this file about?', 'Provide a brief summary.'] };
+            const selected = suggestions[dataType] || suggestions['Unknown'];
+            ui.suggestedQuestionsContainer.innerHTML = selected.map(q => `<button class="text-xs bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-full px-3 py-1.5 mr-2 mb-2 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">${q}</button>`).join('');
+            ui.suggestedQuestionsContainer.querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => { ui.queryInput.value = btn.textContent; submitQuery(btn.textContent); }));
+            ui.suggestedQuestionsContainer.classList.remove('hidden');
+        }
+
+        function setProcessingState(isProcessing) {
+            const btn = ui.processForm.querySelector('button[type="submit"]');
+            btn.disabled = isProcessing;
+            ui.processLoader.classList.toggle('hidden', !isProcessing);
+            ui.processBtnText.textContent = isProcessing ? 'Processing...' : 'Process & Generate';
+        }
+        
+        function setQueryLoadingState(isLoading) {
+            ui.queryInput.disabled = isLoading;
+            ui.querySubmitBtn.disabled = isLoading;
+            const iconContainer = ui.querySubmitBtn.firstElementChild;
+            if (isLoading) { iconContainer.innerHTML = '<div class="loader"></div>'; } 
+            else { ReactDOM.createRoot(iconContainer).render(renderIcon('Send', { size: 20 })); }
+        }
+
+        function appendMessage(role, text, isLoading = false) {
+             const msgEl = document.createElement('div');
+             const iconId = `icon-${Date.now()}${Math.random()}`;
+             const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+             let contentHTML = '';
+             
+             if (role === 'user') {
+                 contentHTML = `<div class="flex-grow"><div class="flex justify-end items-center gap-2 mb-1.5"><span class="text-xs text-gray-400 dark:text-gray-600">${timestamp}</span><p class="font-semibold">You</p></div><div class="bg-blue-600 text-white p-3 rounded-2xl rounded-tr-md ml-auto max-w-xl w-fit"><p class="whitespace-pre-wrap">${text}</p></div></div><div id="${iconId}" class="w-10 h-10 rounded-full flex-shrink-0 bg-gray-200 dark:bg-gray-700 flex items-center justify-center"></div>`;
+             } else if (role === 'bot') {
+                 contentHTML = `<div id="${iconId}" class="w-10 h-10 rounded-full flex-shrink-0 bg-gray-800 dark:bg-white flex items-center justify-center"></div><div class="flex-grow"><div class="flex items-center gap-2 mb-1.5"><p class="font-semibold">Assistant</p><span class="text-xs text-gray-400 dark:text-gray-600">${timestamp}</span></div><div class="bg-gray-100 dark:bg-gray-800/80 p-3 rounded-2xl rounded-tl-md max-w-xl w-fit">${isLoading ? '<div class="flex items-center gap-2"><div class="loader"></div><span>Thinking...</span></div>' : `<p class="whitespace-pre-wrap">${text}</p>`}</div></div>`;
+             } else { contentHTML = `<div class="text-center text-xs text-gray-400 dark:text-gray-600 w-full py-2 tracking-wide"><span>${text}</span></div>`; }
+             
+             msgEl.className = `flex items-start gap-4 ${role === 'user' ? 'flex-row-reverse' : ''}`;
+             if(role === 'system') msgEl.className = '';
+             msgEl.innerHTML = contentHTML;
+             ui.chatWindow.appendChild(msgEl);
+             ui.chatWindow.scrollTop = ui.chatWindow.scrollHeight;
+
+             if (role !== 'system') {
+                const iconName = role === 'user' ? 'User' : 'Bot';
+                const iconProps = role === 'user' ? { size: 20, className: 'text-gray-600 dark:text-gray-300'} : { size: 24, className: 'text-white dark:text-black'};
+                ReactDOM.createRoot(document.getElementById(iconId)).render(renderIcon(iconName, iconProps));
+             }
+             return msgEl;
+        }
+
+        function updateBotMessage(messageElement, text, sources = [], timestamp) {
+            const contentContainer = messageElement.querySelector('.bg-gray-100, .dark\\:bg-gray-800\\/80');
+            if (!contentContainer) return;
+            let sourcesHTML = '';
+            if (sources && sources.length > 0) {
+                const sourcesId = `sources-${Date.now()}${Math.random()}`;
+                const buttonId = `sources-btn-${Date.now()}${Math.random()}`;
+
+                sourcesHTML = `
+                    <div class="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
+                        <button id="${buttonId}" class="text-sm font-semibold flex items-center gap-1.5 text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors">
+                            <span>View Sources (${sources.length})</span>
+                            <span class="source-arrow transition-transform"></span>
+                        </button>
+                        <div id="${sourcesId}" class="sources-container mt-2 space-y-2">
+                            <div class="max-h-40 overflow-y-auto pr-2 space-y-2">
+                            ${sources.map(s => { 
+                                let d = ''; 
+                                if(s.type === 'document') d = `Page ${s.page}`; 
+                                else if(s.type === 'audio') d = `Timestamp: ${s.timestamp}`; 
+                                else if(s.type === 'image') d = `Confidence: ${(s.confidence * 100).toFixed(0)}%`; 
+                                return `<div class="text-xs bg-gray-200 dark:bg-gray-900/70 p-2 rounded-md"><p class="text-gray-500 dark:text-gray-400 truncate">${s.text}</p><span class="text-blue-500 font-medium">${d}</span></div>`
+                            }).join('')}
+                            </div>
+                        </div>
+                    </div>`;
+                
+                setTimeout(() => {
+                    const sourcesBtn = document.getElementById(buttonId);
+                    const sourcesDiv = document.getElementById(sourcesId);
+                    const arrowIconContainer = sourcesBtn.querySelector('.source-arrow');
+                    
+                    if (sourcesBtn && sourcesDiv && arrowIconContainer) {
+                        ReactDOM.createRoot(arrowIconContainer).render(renderIcon('ChevronDown', {size: 16}));
+
+                        sourcesBtn.addEventListener('click', () => {
+                            const isVisible = sourcesDiv.classList.toggle('sources-container-visible');
+                            arrowIconContainer.style.transform = isVisible ? 'rotate(180deg)' : 'rotate(0deg)';
+                        });
+                    }
+                }, 0);
+            }
+
+            contentContainer.innerHTML = `<p class="whitespace-pre-wrap">${text}</p>${sourcesHTML}`;
+            messageElement.querySelector('.text-xs').textContent = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            ui.chatWindow.scrollTop = ui.chatWindow.scrollHeight;
+        }
+
+        function createMetricComponent(label, value, unit, colorClass = 'text-gray-900 dark:text-white') {
+             return `<div><p class="text-gray-500 dark:text-gray-400">${label}</p><p class="text-2xl font-bold ${colorClass}">${value}<span class="text-lg ml-1 font-medium">${unit}</span></p></div>`;
+        }
+
+        function updateMetricsDashboard(metrics) {
+            ui.metricsDashboard.classList.remove('hidden');
+            const scoreEl = document.getElementById('overall-accuracy-score');
+            const score = (metrics.overallAccuracy * 100).toFixed(1);
+            scoreEl.textContent = `${score}%`;
+            scoreEl.className = 'text-5xl font-extrabold ';
+            if (score >= 70) scoreEl.className += 'text-green-500';
+            else if (score >= 40) scoreEl.className += 'text-yellow-500';
+            else scoreEl.className += 'text-red-500';
+            
+            ui.retrievalMetricsGrid.innerHTML = 
+                createMetricComponent('Retrieval Accuracy', (metrics.retrieval.accuracy * 100).toFixed(1), '%', 'text-red-500') +
+                createMetricComponent('Avg Similarity', metrics.retrieval.avgSimilarity.toFixed(3), '') +
+                createMetricComponent('Semantic Coherence', metrics.retrieval.semanticCoherence.toFixed(3), '') +
+                createMetricComponent('Context Used', (metrics.retrieval.contextUsed / 1000).toFixed(1), 'k chars');
+            
+            ui.responseMetricsGrid.innerHTML = 
+                createMetricComponent('Response Accuracy', (metrics.response.accuracy * 100).toFixed(1), '%', 'text-yellow-500') +
+                createMetricComponent('Content Citation', (metrics.response.contentCitation * 100).toFixed(1), '%', 'text-green-500') +
+                createMetricComponent('Completeness', (metrics.response.completeness * 100).toFixed(1), '%', 'text-yellow-500') +
+                createMetricComponent('Reading Time', metrics.response.readingTime.toFixed(1), 'min');
+        }
+
+        // --- INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeUI();
+            setupEventListeners();
+            const savedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            applyTheme(savedTheme);
+        });
+    </script>
+</body>
+</html>
+
