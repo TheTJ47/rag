@@ -1,6 +1,4 @@
-Here’s a polished **GitHub README.md** version of what you wrote, with Markdown formatting, headings, and code blocks for clarity:
 
-````markdown
 # Unified Multimodal RAG System
 
 This project is a **high-performance, offline-first multimodal Retrieval-Augmented Generation (RAG) system**.  
