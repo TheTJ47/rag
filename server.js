@@ -100,7 +100,7 @@ function generateMockSources(dataType) {
  * Calls the Gemini API with a text prompt and file data.
  */
 async function getGeminiResponse(prompt, file) {
-    const apiKey = "AIzaSyCiFoazYi8wx9fKgrDsW577xfMfqhJ4Nn0"; // Environment provides this
+    const apiKey = ""; // Environment provides this
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
 
     const payload = {
